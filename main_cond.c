@@ -1,3 +1,14 @@
+/**
+ * @file main_cond.c
+ * @author Kacper Chrost, Maciej Fender, Krzysztof Funkowski
+ * @brief Solved bridge problem using mutexes and condition variables
+ * @version 1.0
+ * @date 2021-05-06
+ *
+ * @copyright Copyright (c) 2021
+ *
+ */
+
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -10,21 +21,26 @@
 #include <pthread.h>
 #define ll long long
 
+/** \brief Structure representing a car having information about it's number and city where it actually is. 
+ */
 typedef struct Samochod
 {
     int nr;
     char miasto;
 }Samochod;
 
+//mutexes used for blocking 
 pthread_mutex_t lock;
 pthread_mutex_t lock2;
+
+//attribute used for defining scheduling policy to FIFO
 pthread_attr_t attribute;
+
+
 pthread_cond_t* condition;//= PTHREAD_COND_INITIALIZER;
 
-//counter
-volatile int counter=0;
 
-//ile jest w miescie
+//how many
 volatile int miastoA_ilosc=0;
 volatile int miastoB_ilosc=0;
 

@@ -95,6 +95,7 @@ void* Przejazd(void* vargp)
             miastoA_ilosc--;
             miastoA_wyjazd++;
         }
+        //if car is from City B and counter of cars in this city is greater than 0
         else if(samochod->miasto=='B' && miastoB_ilosc>0)
         {
             //subract one from counter of cars in city B and add this one to queue on the side of city B
@@ -108,23 +109,36 @@ void* Przejazd(void* vargp)
 
         //block that represents situation that a car drives over the bridge
         pthread_mutex_lock(&lock2);
+        //blocking first lock to prevent queueing up cars while one of them is on the bridge
         pthread_mutex_lock(&lock);
+
+        //if car is from City A and counter of cars on this side of the bridge than 0
         if(samochod->miasto=='A' && miastoA_wyjazd>0)
         {
+            //changing city where the car is driving
             samochod->miasto='B';
+            //subract one from counter of cars in queue of city A side of the bridge
             miastoA_wyjazd--;
+            //print current state of bridge and amount of cars in cities and queues
             printf("A-%d %d>>> [>> %d >>] <<<%d %d-B\n",miastoA_ilosc,miastoA_wyjazd,samochod->nr,miastoB_wyjazd,miastoB_ilosc);
             fflush(stdout);
+            //add one to counter of cars in city B
             miastoB_ilosc++;
         }
+        //if car is from City B and counter of cars on this side of the bridge than 0
         else if(samochod->miasto=='B' && miastoB_wyjazd>0)
         {
+            //changing city where the car is driving
             samochod->miasto='A';
+            //subract one from counter of cars in queue of city B side of the bridge
             miastoB_wyjazd--;
+            //print current state of bridge and amount of cars in cities and queues
             printf("A-%d %d>>> [<< %d <<] <<<%d %d-B\n",miastoA_ilosc,miastoA_wyjazd,samochod->nr,miastoB_wyjazd,miastoB_ilosc);
             fflush(stdout);
+            //add one to counter of cars in city A
             miastoA_ilosc++;
         }
+        //unlocking mutexes
         pthread_mutex_unlock(&lock);
         pthread_mutex_unlock(&lock2);
     }
@@ -132,21 +146,34 @@ void* Przejazd(void* vargp)
 
 int main(int argc, char** argv)
 {
+    //if the amount of given parameteres is not equal 2 then end program
     if(argc!=2) 
     {
         printf("Zla liczba argumentow");
         return EXIT_FAILURE;
     }
+
+    //implementing randomizing numbers depending on system time
     time_t t;
     srand((unsigned) time(&t));
+
+    //set numbers of cars to variable from parameter
     int ile_watkow = atoi(argv[1]);
     int i;
+
+    //initializing car entities and threads 
     Samochod** samochody = (Samochod**)malloc(ile_watkow*sizeof(Samochod*));
     pthread_t* tid = (pthread_t*)malloc(ile_watkow*sizeof(pthread_t));
+
+    //initialize mutexes
     pthread_mutex_init(&lock,NULL);
     pthread_mutex_init(&lock2,NULL);
+    //initialize attribute
     pthread_attr_init(&attribute);
+    //set scheduling policy to FIFO
     pthread_attr_setschedpolicy(&attribute,SCHED_FIFO);
+
+    //initialize default settings for each car
     for(i=0;i<ile_watkow;i++)
     {
         samochody[i] = (Samochod*)malloc(sizeof(Samochod));
@@ -165,19 +192,21 @@ int main(int argc, char** argv)
 
     printf("START MiastoA:%d MiastoB:%d\n",miastoA_wyjazd,miastoB_wyjazd);
 
+    //start threads
     for(i=0;i<ile_watkow;i++)
     {
         pthread_create(&tid[i],&attribute,Przejazd,samochody[i]);
     }
+    //wait for threads termination
     for(i=0;i<ile_watkow;i++)
     {
         pthread_join(tid[i],NULL);
     }
-    //pthread_exit(NULL);
-
+    //destroy mutexes
     pthread_mutex_destroy(&lock);
     pthread_mutex_destroy(&lock2);
 
+    //free allocated space
     for(i=0;i<ile_watkow;i++)
     {
         free(samochody[i]);

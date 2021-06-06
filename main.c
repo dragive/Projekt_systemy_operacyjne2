@@ -8,6 +8,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <pthread.h>
+#define ll long long
 
 typedef struct Samochod
 {
@@ -30,6 +31,17 @@ volatile int miastoB_ilosc=0;
 volatile int miastoA_wyjazd=0;
 volatile int miastoB_wyjazd=0;
 
+unsigned ll llrand()
+{
+    unsigned ll a = rand()*rand(); if (a<0) a*-1; 
+    return a;
+}
+ll rn(ll a,ll b)
+{
+    return ((unsigned ll)(llrand()))%(b-a+1)+a;
+}
+
+
 //funkcja watka
 void* Przejazd(void* vargp)
 {
@@ -38,8 +50,8 @@ void* Przejazd(void* vargp)
     int i;
     while(1)
     {
-        //usleep(1000+rand()%1000);
-        usleep(1000000+rand()%1000000);
+        usleep(rn(1000,1000000));
+        //usleep(1000000+rand()%1000000);
         pthread_mutex_lock(&lock);
         if(samochod->miasto=='A' && miastoA_ilosc>0)
         {
@@ -53,7 +65,7 @@ void* Przejazd(void* vargp)
         }
         pthread_mutex_unlock(&lock);
 
-
+        usleep(rn(1000,1000000));
 
         pthread_mutex_lock(&lock2);
         pthread_mutex_lock(&lock);

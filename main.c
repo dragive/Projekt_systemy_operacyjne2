@@ -32,7 +32,7 @@ typedef struct Samochod
 //mutexes used for blocking 
 pthread_mutex_t lock;
 pthread_mutex_t lock2;
-
+pthread_mutex_t lock_rn;
 //attribute used for defining scheduling policy to FIFO
 pthread_attr_t attribute;
 
@@ -44,7 +44,7 @@ volatile int miastoB_ilosc=0;
 volatile int miastoA_wyjazd=0;
 volatile int miastoB_wyjazd=0;
 
-/** \brief Return randomize number
+/** \brief Return randomized number
  * \return random number
  */
 unsigned ll llrand()
@@ -52,8 +52,7 @@ unsigned ll llrand()
     unsigned ll a = rand()*rand(); if (a<0) a*-1; 
     return a;
 }
-
-/** \brief Return randomize number from given range
+/** \brief Return randomized number from given range
  *
  * \param a start of range to pick number
  * \param b end of range to pick number
@@ -62,7 +61,10 @@ unsigned ll llrand()
  */
 ll rn(ll a,ll b)
 {
-    return ((unsigned ll)(llrand()))%(b-a+1)+a;
+    pthread_mutex_lock(&lock_rn);
+    unsigned long long ret = ((unsigned ll)(llrand()))%(b-a+1)+a;
+    pthread_mutex_unlock(&lock_rn);
+    return ret;
 }
 
 /** \brief Thread function representiong car that want to go through bridge
@@ -168,6 +170,7 @@ int main(int argc, char** argv)
     //initialize mutexes
     pthread_mutex_init(&lock,NULL);
     pthread_mutex_init(&lock2,NULL);
+    pthread_mutex_init(&lock_rn,NULL);
     //initialize attribute
     pthread_attr_init(&attribute);
     //set scheduling policy to FIFO
@@ -205,7 +208,7 @@ int main(int argc, char** argv)
     //destroy mutexes
     pthread_mutex_destroy(&lock);
     pthread_mutex_destroy(&lock2);
-
+    pthread_mutex_destroy(&lock_rn);
     //free allocated space
     for(i=0;i<ile_watkow;i++)
     {

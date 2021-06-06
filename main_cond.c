@@ -32,7 +32,8 @@ typedef struct Samochod
 
 //mutexes used for blocking 
 pthread_mutex_t lock;
-pthread_mutex_t lock2;
+
+pthread_mutex_t lock_rn;
 
 //attribute used for defining scheduling policy to FIFO
 pthread_attr_t attribute;
@@ -56,7 +57,10 @@ unsigned ll llrand()
 }
 ll rn(ll a,ll b)
 {
-    return ((unsigned ll)(llrand()))%(b-a+1)+a;
+    pthread_mutex_lock(&lock_rn);
+    unsigned long long ret = ((unsigned ll)(llrand()))%(b-a+1)+a;
+    pthread_mutex_unlock(&lock_rn);
+    return ret;
 }
 
 
@@ -131,24 +135,10 @@ void* Przejazd(void* vargp)
         if(debug)printf("%d",temp++);fflush(stdout);//8
         pthread_mutex_unlock(&lock);
         if(debug)printf("%d",temp++);fflush(stdout);//9
-       
-        // printf("#%d",samochod->nr);
-        // // pthread_cond_signal(&condition);//-1+(samochod->nr)+
-        
-
-
-
-
-
 
     }
 }
 
-//funkcja watka
-void* PrzejdzDoKolejki(void* vargp)
-{
-   
-}
 
 int main(int argc, char** argv)
 {
@@ -161,17 +151,14 @@ int main(int argc, char** argv)
     time_t t;
     srand((unsigned) time(&t));
     int ile_watkow = atoi(argv[1]);
-    condition ;//= malloc(ile_watkow*sizeof(pthread_cond_t));
     int i=0;
-    // for(;i<ile_watkow;i++)
-    // {
-    //     pthread_cond_init(&condition[i],NULL);
-    // }
+
     
     Samochod** samochody = (Samochod**)malloc(ile_watkow*sizeof(Samochod*));
     pthread_t* tid = (pthread_t*)malloc(2*ile_watkow*sizeof(pthread_t));
     pthread_mutex_init(&lock,NULL);
-    pthread_mutex_init(&lock2,NULL);
+    
+    pthread_mutex_init(&lock_rn,NULL);
     pthread_attr_init(&attribute);
     pthread_attr_setschedpolicy(&attribute,SCHED_FIFO);
     for(i=0;i<ile_watkow;i++)
@@ -195,7 +182,7 @@ int main(int argc, char** argv)
 
     for(i=0;i<ile_watkow;i++)
     {
-        pthread_create(&tid[i],&attribute,PrzejdzDoKolejki,samochody[i]);
+        
         pthread_create(&tid[ile_watkow+i],&attribute,Przejazd,samochody[i]);
     }
     for(i=0;i<ile_watkow*2;i++)
@@ -205,7 +192,8 @@ int main(int argc, char** argv)
     //pthread_exit(NULL);
 
     pthread_mutex_destroy(&lock);
-    pthread_mutex_destroy(&lock2);
+    
+    pthread_mutex_destroy(&lock_rn);
 
     for(i=0;i<ile_watkow;i++)
     {

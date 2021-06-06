@@ -8,6 +8,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <pthread.h>
+#define ll long long
 
 typedef struct Samochod
 {
@@ -18,6 +19,7 @@ typedef struct Samochod
 pthread_mutex_t lock;
 pthread_mutex_t lock2;
 pthread_attr_t attribute;
+pthread_cond_t* condition;//= PTHREAD_COND_INITIALIZER;
 
 //counter
 volatile int counter=0;
@@ -30,6 +32,19 @@ volatile int miastoB_ilosc=0;
 volatile int miastoA_wyjazd=0;
 volatile int miastoB_wyjazd=0;
 
+unsigned ll llrand()
+{
+    unsigned ll a = rand()*rand(); if (a<0) a*-1; 
+    return a;
+}
+ll rn(ll a,ll b)
+{
+    return ((unsigned ll)(llrand()))%(b-a+1)+a;
+}
+
+
+
+
 //funkcja watka
 void* Przejazd(void* vargp)
 {
@@ -38,25 +53,11 @@ void* Przejazd(void* vargp)
     int i;
     while(1)
     {
-        //usleep(1000+rand()%1000);
-        usleep(1000000+rand()%1000000);
+        usleep(rn(1000,1000000));
+
         pthread_mutex_lock(&lock);
-        if(samochod->miasto=='A' && miastoA_ilosc>0)
-        {
-            miastoA_ilosc--;
-            miastoA_wyjazd++;
-        }
-        else if(samochod->miasto=='B' && miastoB_ilosc>0)
-        {
-            miastoB_ilosc--;
-            miastoB_wyjazd++;
-        }
-        pthread_mutex_unlock(&lock);
-
-
-
-        pthread_mutex_lock(&lock2);
-        pthread_mutex_lock(&lock);
+        pthread_cond_wait(-1+(samochod->nr)+condition,&lock);
+        printf("###%d\n",samochod->nr);
         if(samochod->miasto=='A' && miastoA_wyjazd>0)
         {
             samochod->miasto='B';
@@ -74,7 +75,33 @@ void* Przejazd(void* vargp)
             miastoA_ilosc++;
         }
         pthread_mutex_unlock(&lock);
-        pthread_mutex_unlock(&lock2);
+    }
+}
+
+//funkcja watka
+void* PrzejdzDoKolejki(void* vargp)
+{
+    sleep(1);
+    Samochod* samochod = (Samochod*)vargp;
+    int i;
+    while(1)
+    {
+        usleep(rn(1000,1000000));
+        //usleep(1000000+rand()%1000000);
+        pthread_mutex_lock(&lock);
+        if(samochod->miasto=='A' && miastoA_ilosc>0)
+        {
+            miastoA_ilosc--;
+            miastoA_wyjazd++;
+        }
+        else if(samochod->miasto=='B' && miastoB_ilosc>0)
+        {
+            miastoB_ilosc--;
+            miastoB_wyjazd++;
+        }
+        printf("#%d",samochod->nr);
+        pthread_cond_signal(-1+(samochod->nr)+condition);
+        pthread_mutex_unlock(&lock);
     }
 }
 
@@ -85,12 +112,19 @@ int main(int argc, char** argv)
         printf("Zla liczba argumentow");
         return EXIT_FAILURE;
     }
+
     time_t t;
     srand((unsigned) time(&t));
     int ile_watkow = atoi(argv[1]);
-    int i;
+    condition = malloc(ile_watkow*sizeof(pthread_cond_t));
+    int i=0;
+    for(;i<ile_watkow;i++)
+    {
+        pthread_cond_init(&condition[i],NULL);
+    }
+    
     Samochod** samochody = (Samochod**)malloc(ile_watkow*sizeof(Samochod*));
-    pthread_t* tid = (pthread_t*)malloc(ile_watkow*sizeof(pthread_t));
+    pthread_t* tid = (pthread_t*)malloc(2*ile_watkow*sizeof(pthread_t));
     pthread_mutex_init(&lock,NULL);
     pthread_mutex_init(&lock2,NULL);
     pthread_attr_init(&attribute);
@@ -115,9 +149,10 @@ int main(int argc, char** argv)
 
     for(i=0;i<ile_watkow;i++)
     {
-        pthread_create(&tid[i],&attribute,Przejazd,samochody[i]);
+        pthread_create(&tid[i],&attribute,PrzejdzDoKolejki,samochody[i]);
+        pthread_create(&tid[ile_watkow+i],&attribute,Przejazd,samochody[i]);
     }
-    for(i=0;i<ile_watkow;i++)
+    for(i=0;i<ile_watkow*2;i++)
     {
         pthread_join(tid[i],NULL);
     }
@@ -131,5 +166,6 @@ int main(int argc, char** argv)
         free(samochody[i]);
     }
     free(samochody);
+    free(condition);
     return 0;
 }
